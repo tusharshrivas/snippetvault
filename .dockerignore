@@ -1,0 +1,20 @@
+# Exclude the Maven build output — the Dockerfile re-builds inside the container
+target/
+
+# Exclude IDE and OS noise
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Exclude sensitive files — these are passed as env vars, never baked into the image
+.env
+
+# Exclude documentation and git metadata — not needed at runtime
+README.md
+.git/
+.gitignore
+
+# Exclude test sources — skipped during Docker build anyway (-DskipTests)
+# but excluding them keeps the context smaller
+src/test/
