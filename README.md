@@ -4,8 +4,8 @@ A production-grade REST API for storing, retrieving, and searching code snippets
 
 Developers register once, receive a JWT and a permanent API key, and interact entirely through HTTP. No frontend required.
 
-**Live API:** `https://snippetvault.up.railway.app` *(replace after deployment)*
-**Swagger UI:** `https://snippetvault.up.railway.app/swagger-ui.html`
+**Live Demo:** https://snippetvault-e7ln.onrender.com/swagger-ui.html
+**Base URL:** https://snippetvault-e7ln.onrender.com
 
 ---
 
