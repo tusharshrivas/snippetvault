@@ -22,7 +22,7 @@ Developers register once, receive a JWT and a permanent API key, and interact en
 | Rate Limiting | Redis 7 (atomic INCR) |
 | API Docs | Springdoc OpenAPI / Swagger UI |
 | Containerisation | Docker + Docker Compose |
-| Deployment | Railway (free tier) |
+| Deployment | Render (API) + Supabase (Postgres) + Upstash (Redis) |
 | Testing | JUnit 5 + Mockito (37 tests) |
 
 ---
@@ -263,6 +263,13 @@ done
 
 ---
 
+## Hosting (free tier setup)
+
+- **API:** Render web service (Docker). Free services sleep after ~15 min idle; the first request afterwards takes about a minute.
+- **Database:** Supabase Postgres. Use the **Session pooler** connection details (`DB_URL`, `DB_USERNAME=postgres.<project-ref>`, `DB_PASSWORD`).
+- **Redis:** Upstash. Set `REDIS_URL` to the `rediss://...` URL.
+- **Keep-alive:** `.github/workflows/keep-alive.yml` calls the API every 3 days so the free Supabase/Upstash instances are not paused or archived for inactivity.
+
 ## Rate Limiting
 
 | Caller type | Limit | Identifier | Redis key pattern |
@@ -296,13 +303,11 @@ X-RateLimit-Reset: 1718000000
 | `DB_URL` | Yes | `jdbc:postgresql://localhost:5432/snippetvault` | PostgreSQL JDBC URL |
 | `DB_USERNAME` | Yes | `postgres` | Database username |
 | `DB_PASSWORD` | Yes | `postgres` | Database password |
-| `REDIS_HOST` | Yes | `localhost` | Redis hostname |
-| `REDIS_PORT` | Yes | `6379` | Redis port |
-| `REDIS_PASSWORD` | No | *(empty)* | Redis AUTH password |
+| `REDIS_URL` | Yes | `redis://localhost:6379` | Redis connection URL. Use `rediss://default:<password>@<host>:6379` for TLS providers such as Upstash |
 | `JWT_SECRET` | Yes | *(dev default)* | Base64-encoded secret, min 32 bytes. Generate: `openssl rand -base64 64` |
 | `JWT_ACCESS_EXPIRY_MS` | No | `1800000` | Access token lifetime in ms (default 30 min) |
 | `JWT_REFRESH_EXPIRY_MS` | No | `604800000` | Refresh token lifetime in ms (default 7 days) |
-| `PORT` | No | `8080` | Server port — Railway injects this automatically |
+| `PORT` | No | `8080` | Server port — the hosting platform injects this automatically |
 
 ---
 
@@ -333,9 +338,9 @@ src/main/java/com/snippetvault/
 
 **Pagination on `GET /api/snippets`** — the user's own snippets endpoint returns all results as a list. Adding pagination here would prevent issues for users with thousands of snippets.
 
-**Rate limit Redis blocklist** — the fail-open approach (allow request when Redis is unreachable) is pragmatic but could be abused during an outage. A circuit breaker with a configurable fail-closed mode would be more robust for production.
+**Rate limit Redis blocklist** — the fail-open approach (allow request when Redis is unreachable or errors) is pragmatic but could be abused during an outage. A circuit breaker with a configurable fail-closed mode would be more robust for production.
 
-**HTTPS enforcement** — currently handled by Railway's reverse proxy. If self-hosting, Spring Security's `requiresSecure()` or a redirect filter would enforce TLS at the application layer.
+**HTTPS enforcement** — currently handled by Render's reverse proxy. If self-hosting, Spring Security's `requiresSecure()` or a redirect filter would enforce TLS at the application layer.
 
 **Structured logging with correlation IDs** — injecting a `X-Request-Id` header into MDC (Mapped Diagnostic Context) would make log lines traceable across the filter chain, invaluable for debugging distributed issues.
 

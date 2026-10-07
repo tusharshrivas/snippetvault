@@ -68,15 +68,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private long increment(String redisKey) {
-        Long count = redisTemplate.opsForValue().increment(redisKey);
-        if (count == null) {
-            log.warn("Redis INCR returned null for key: {}. Failing open.", redisKey);
+        try {
+            Long count = redisTemplate.opsForValue().increment(redisKey);
+            if (count == null) {
+                log.warn("Redis INCR returned null for key: {}. Failing open.", redisKey);
+                return 0L;
+            }
+            if (count == 1L) {
+                redisTemplate.expire(redisKey, WINDOW_SECONDS, TimeUnit.SECONDS);
+            }
+            return count;
+        } catch (RuntimeException e) {
+            // Redis down, archived, timed out, or over its free-tier limit:
+            // let the request through instead of returning a 500 to every caller.
+            log.warn("Redis unavailable ({}). Failing open for key: {}", e.getMessage(), redisKey);
             return 0L;
         }
-        if (count == 1L) {
-            redisTemplate.expire(redisKey, WINDOW_SECONDS, TimeUnit.SECONDS);
-        }
-        return count;
     }
 
     private String resolveIdentifier(HttpServletRequest request) {
@@ -104,8 +111,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private long getRemainingTtl(String redisKey) {
-        Long ttl = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
-        return (ttl != null && ttl > 0) ? ttl : WINDOW_SECONDS;
+        try {
+            Long ttl = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
+            return (ttl != null && ttl > 0) ? ttl : WINDOW_SECONDS;
+        } catch (RuntimeException e) {
+            return WINDOW_SECONDS;
+        }
     }
 
     private void rejectRequest(HttpServletResponse response, long retryAfterSeconds)

@@ -1,0 +1,19 @@
+name: Keep free-tier services awake
+
+# Free tiers pause or archive idle projects (Supabase Postgres, Upstash Redis).
+# This calls a public endpoint every 3 days; the request reads from Postgres
+# and increments a Redis counter, so both see activity.
+on:
+  schedule:
+    - cron: "0 6 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the API
+        run: |
+          curl --fail --silent --show-error \
+               --max-time 120 --retry 3 --retry-delay 30 --retry-all-errors \
+               "https://snippetvault-e7ln.onrender.com/api/snippets/public?size=1"
